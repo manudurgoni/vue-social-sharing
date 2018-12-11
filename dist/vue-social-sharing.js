@@ -241,7 +241,7 @@ var SocialSharing = {
      */
     createSharingUrl: function createSharingUrl (network) {
       return this.baseNetworks[network].sharer
-        .replace(/@url/g, encodeURIComponent((this.addUTM) ? ((this.url) + "?utm_campaign=share_" + network) : this.url))
+        .replace(/@url/g, encodeURIComponent((this.addUtm) ? ((this.url) + "?utm_campaign=share_" + network) : this.url))
         .replace(/@title/g, encodeURIComponent(this.title))
         .replace(/@description/g, encodeURIComponent(this.description))
         .replace(/@quote/g, encodeURIComponent(this.quote))
