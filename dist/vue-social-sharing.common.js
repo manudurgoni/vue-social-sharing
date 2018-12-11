@@ -157,7 +157,7 @@ var SocialSharing = {
      * add a query parameter utm_campaign for tracking.
      * @var bool
      */
-    addUTM: {
+    addUtm: {
       type: Boolean,
       default: false
     },
