@@ -1,6 +1,6 @@
 /*!
- * vue-social-sharing v2.3.3 
- * (c) 2018 nicolasbeauvais
+ * vue-social-sharing v2.4.7 
+ * (c) 2019 nicolasbeauvais
  * Released under the MIT License.
  */
 'use strict';
@@ -33,6 +33,7 @@ var SocialSharingNetwork = {
       style: context.data.style || null,
       attrs: {
         id: context.data.attrs.id || null,
+        tabindex: context.data.attrs.tabindex || 0,
         'data-link': network.type === 'popup'
           ? '#share-' + context.props.network
           : context.parent.createSharingUrl(context.props.network),
@@ -50,7 +51,7 @@ var SocialSharingNetwork = {
 };
 
 var email = {"sharer":"mailto:?subject=@title&body=@url%0D%0A%0D%0A@description","type":"direct"};
-var facebook = {"sharer":"https://www.facebook.com/sharer/sharer.php?u=@url&title=@title&description=@description&quote=@quote","type":"popup"};
+var facebook = {"sharer":"https://www.facebook.com/sharer/sharer.php?u=@url&title=@title&description=@description&quote=@quote&hashtag=@hashtags","type":"popup"};
 var googleplus = {"sharer":"https://plus.google.com/share?url=@url","type":"popup"};
 var line = {"sharer":"http://line.me/R/msg/text/?@description%0D%0A@url","type":"popup"};
 var linkedin = {"sharer":"https://www.linkedin.com/shareArticle?mini=true&url=@url&title=@title&summary=@description","type":"popup"};
@@ -63,8 +64,9 @@ var twitter = {"sharer":"https://twitter.com/intent/tweet?text=@title&url=@url&h
 var viber = {"sharer":"viber://forward?text=@url @description","type":"direct"};
 var vk = {"sharer":"https://vk.com/share.php?url=@url&title=@title&description=@description&image=@media&noparse=true","type":"popup"};
 var weibo = {"sharer":"http://service.weibo.com/share/share.php?url=@url&title=@title","type":"popup"};
-var whatsapp = {"sharer":"whatsapp://send?text=@description%0D%0A@url","type":"direct","action":"share/whatsapp/share"};
+var whatsapp = {"sharer":"https://api.whatsapp.com/send?text=@description%0D%0A@url","type":"popup","action":"share/whatsapp/share"};
 var sms = {"sharer":"sms:?body=@url%20@description","type":"direct"};
+var sms_ios = {"sharer":"sms:;body=@url%20@description","type":"direct"};
 var BaseNetworks = {
 	email: email,
 	facebook: facebook,
@@ -81,7 +83,8 @@ var BaseNetworks = {
 	vk: vk,
 	weibo: weibo,
 	whatsapp: whatsapp,
-	sms: sms
+	sms: sms,
+	sms_ios: sms_ios
 };
 
 var inBrowser = typeof window !== 'undefined';
@@ -238,20 +241,53 @@ var SocialSharing = {
      * @param network Social network key.
      */
     createSharingUrl: function createSharingUrl (network) {
-      return this.baseNetworks[network].sharer
+      var ua = navigator.userAgent.toLowerCase();
+
+      /**
+       * On IOS, SMS sharing link need a special formating
+       * Source: https://weblog.west-wind.com/posts/2013/Oct/09/Prefilling-an-SMS-on-Mobile-Devices-with-the-sms-Uri-Scheme#Body-only
+        */
+      if (network === 'sms' && (ua.indexOf('iphone') > -1 || ua.indexOf('ipad') > -1)) {
+        network += '_ios';
+      }
+
+      var url = this.baseNetworks[network].sharer;
+
+      /**
+       * On IOS, Twitter sharing shouldn't include a hashtag parameter if the hashtag value is empty
+       * Source: https://github.com/nicolasbeauvais/vue-social-sharing/issues/143
+        */
+      if (network === 'twitter' && this.hashtags.length === 0) {
+        url = url.replace('&hashtags=@hashtags', '');
+      }
+
+      return url
         .replace(/@url/g, encodeURIComponent((this.addUtm) ? ((this.url) + "?utm_campaign=share_" + network) : this.url))
+        .replace(/@url/g, encodeURIComponent(this.url))
         .replace(/@title/g, encodeURIComponent(this.title))
         .replace(/@description/g, encodeURIComponent(this.description))
         .replace(/@quote/g, encodeURIComponent(this.quote))
-        .replace(/@hashtags/g, this.hashtags)
+        .replace(/@hashtags/g, this.generateHashtags(network, this.hashtags))
         .replace(/@media/g, this.media)
         .replace(/@twitteruser/g, this.twitterUser ? '&via=' + this.twitterUser : '');
     },
+    /**
+     * Encode hashtags for the specified social network.
+     *
+     * @param  network Social network key
+     * @param  hashtags All hashtags specified
+     */
+    generateHashtags: function generateHashtags (network, hashtags) {
+      if (network === 'facebook' && hashtags.length > 0) {
+        return '%23' + hashtags.split(',')[0];
+      }
 
+      return hashtags;
+    },
     /**
      * Shares URL in specified network.
      *
-     * @param string network Social network key.
+     * @param network Social network key.
      */
     share: function share (network) {
       this.openSharer(network, this.createSharingUrl(network));
@@ -263,7 +299,7 @@ var SocialSharing = {
     /**
      * Touches network and emits click event.
      *
-     * @param string network Social network key.
+     * @param network Social network key.
      */
     touch: function touch (network) {
       window.open(this.createSharingUrl(network), '_self');
@@ -275,22 +311,24 @@ var SocialSharing = {
     /**
      * Opens sharer popup.
      *
-     * @param string url Url to share.
+     * @param network Social network key
+     * @param url Url to share.
      */
     openSharer: function openSharer (network, url) {
       var this$1 = this;
 
       // If a popup window already exist it will be replaced, trigger a close event.
-      if (this.popup.window && this.popup.interval) {
+      var popupWindow = null;
+      if (popupWindow && this.popup.interval) {
         clearInterval(this.popup.interval);
 
-        this.popup.window.close();// Force close (for Facebook)
+        popupWindow.close();// Force close (for Facebook)
 
         this.$root.$emit('social_shares_change', network, this.url);
         this.$emit('change', network, this.url);
       }
 
-      this.popup.window = window.open(
+      popupWindow = window.open(
         url,
         'sharer',
         'status=' + (this.popup.status ? 'yes' : 'no') +
@@ -308,14 +346,14 @@ var SocialSharing = {
         ',directories=' + (this.popup.directories ? 'yes' : 'no')
       );
 
-      this.popup.window.focus();
+      popupWindow.focus();
 
       // Create an interval to detect popup closing event
       this.popup.interval = setInterval(function () {
-        if (this$1.popup.window.closed) {
+        if (!popupWindow || popupWindow.closed) {
           clearInterval(this$1.popup.interval);
 
-          this$1.popup.window = undefined;
+          popupWindow = undefined;
 
           this$1.$root.$emit('social_shares_close', network, this$1.url);
           this$1.$emit('close', network, this$1.url);
@@ -361,7 +399,7 @@ var SocialSharing = {
   }
 };
 
-SocialSharing.version = '2.3.3';
+SocialSharing.version = '2.4.7';
 
 SocialSharing.install = function (Vue) {
   Vue.component('social-sharing', SocialSharing);
