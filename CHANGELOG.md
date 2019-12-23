@@ -1,3 +1,43 @@
+<a name="2.4.7"></a>
+# [2.4.7](https://github.com/nicolasbeauvais/vue-social-sharing/compare/2.4.6...2.4.7) (2019-11-07)
+- Fix undefined popup error
+
+<a name="2.4.6"></a>
+# [2.4.6](https://github.com/nicolasbeauvais/vue-social-sharing/compare/2.4.5...2.4.6) (2019-08-11)
+- Fix IOS Twitter sharing with empty hashtags, again
+
+<a name="2.4.5"></a>
+# [2.4.5](https://github.com/nicolasbeauvais/vue-social-sharing/compare/2.4.4...2.4.5) (2019-05-31)
+- Fix IOS Twitter sharing with empty hashtags
+
+<a name="2.4.4"></a>
+# [2.4.4](https://github.com/nicolasbeauvais/vue-social-sharing/compare/2.4.3...2.4.4) (2019-05-29)
+- Update Whatsapp share url to use API
+- Fix IOS SMS sharing format (using ; instead of ?)
+- Add tabindex attribute
+
+<a name="2.4.3"></a>
+# [2.4.3](https://github.com/nicolasbeauvais/vue-social-sharing/compare/2.4.2...2.4.3) (2019-04-09)
+- Fix IE11 popup.window bug
+
+<a name="2.4.2"></a>
+# [2.4.2](https://github.com/nicolasbeauvais/vue-social-sharing/compare/2.4.1...2.4.2) (2019-02-21)
+- Fix build
+
+<a name="2.4.1"></a>
+# [2.4.1](https://github.com/nicolasbeauvais/vue-social-sharing/compare/2.4.0...2.4.1) (2019-02-20)
+- Fix issue #123
+
+<a name="2.4.0"></a>
+# [2.4.0](https://github.com/nicolasbeauvais/vue-social-sharing/compare/2.3.4...2.4.0) (2019-02-19)
+- Fix facebook hashtags
+- Move rollup-plugin-json to devDependencies
+- Improve readme
+
+<a name="2.3.4"></a>
+# [2.3.4](https://github.com/nicolasbeauvais/vue-social-sharing/compare/2.3.3...2.3.4) (2019-02-11)
+- Add support for facebook hashtags (PR #120)
+
 <a name="2.3.3"></a>
 # [2.3.3](https://github.com/nicolasbeauvais/vue-social-sharing/compare/2.3.2...2.3.3) (2017-12-11)
 - Tag 2.3.3

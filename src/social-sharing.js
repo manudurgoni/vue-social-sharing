@@ -3,7 +3,7 @@ import BaseNetworks from './networks.json';
 import Vue from 'vue';
 
 const inBrowser = typeof window !== 'undefined';
-var $window = inBrowser ? window : null;
+let $window = inBrowser ? window : null;
 
 export function mockWindow (self) {
   $window = self || window; // mock window for unit testing
@@ -160,20 +160,53 @@ export default {
      * @param network Social network key.
      */
     createSharingUrl (network) {
-      return this.baseNetworks[network].sharer
+      const ua = navigator.userAgent.toLowerCase();
+
+      /**
+       * On IOS, SMS sharing link need a special formating
+       * Source: https://weblog.west-wind.com/posts/2013/Oct/09/Prefilling-an-SMS-on-Mobile-Devices-with-the-sms-Uri-Scheme#Body-only
+        */
+      if (network === 'sms' && (ua.indexOf('iphone') > -1 || ua.indexOf('ipad') > -1)) {
+        network += '_ios';
+      }
+
+      let url = this.baseNetworks[network].sharer;
+
+      /**
+       * On IOS, Twitter sharing shouldn't include a hashtag parameter if the hashtag value is empty
+       * Source: https://github.com/nicolasbeauvais/vue-social-sharing/issues/143
+        */
+      if (network === 'twitter' && this.hashtags.length === 0) {
+        url = url.replace('&hashtags=@hashtags', '');
+      }
+
+      return url
         .replace(/@url/g, encodeURIComponent((this.addUtm) ? `${this.url}?utm_campaign=share_${network}` : this.url))
+        .replace(/@url/g, encodeURIComponent(this.url))
         .replace(/@title/g, encodeURIComponent(this.title))
         .replace(/@description/g, encodeURIComponent(this.description))
         .replace(/@quote/g, encodeURIComponent(this.quote))
-        .replace(/@hashtags/g, this.hashtags)
+        .replace(/@hashtags/g, this.generateHashtags(network, this.hashtags))
         .replace(/@media/g, this.media)
         .replace(/@twitteruser/g, this.twitterUser ? '&via=' + this.twitterUser : '');
     },
+    /**
+     * Encode hashtags for the specified social network.
+     *
+     * @param  network Social network key
+     * @param  hashtags All hashtags specified
+     */
+    generateHashtags (network, hashtags) {
+      if (network === 'facebook' && hashtags.length > 0) {
+        return '%23' + hashtags.split(',')[0];
+      }
 
+      return hashtags;
+    },
     /**
      * Shares URL in specified network.
      *
-     * @param string network Social network key.
+     * @param network Social network key.
      */
     share (network) {
       this.openSharer(network, this.createSharingUrl(network));
@@ -185,7 +218,7 @@ export default {
     /**
      * Touches network and emits click event.
      *
-     * @param string network Social network key.
+     * @param network Social network key.
      */
     touch (network) {
       window.open(this.createSharingUrl(network), '_self');
@@ -197,20 +230,22 @@ export default {
     /**
      * Opens sharer popup.
      *
-     * @param string url Url to share.
+     * @param network Social network key
+     * @param url Url to share.
      */
     openSharer (network, url) {
       // If a popup window already exist it will be replaced, trigger a close event.
-      if (this.popup.window && this.popup.interval) {
+      let popupWindow = null;
+      if (popupWindow && this.popup.interval) {
         clearInterval(this.popup.interval);
 
-        this.popup.window.close();// Force close (for Facebook)
+        popupWindow.close();// Force close (for Facebook)
 
         this.$root.$emit('social_shares_change', network, this.url);
         this.$emit('change', network, this.url);
       }
 
-      this.popup.window = window.open(
+      popupWindow = window.open(
         url,
         'sharer',
         'status=' + (this.popup.status ? 'yes' : 'no') +
@@ -228,14 +263,14 @@ export default {
         ',directories=' + (this.popup.directories ? 'yes' : 'no')
       );
 
-      this.popup.window.focus();
+      popupWindow.focus();
 
       // Create an interval to detect popup closing event
       this.popup.interval = setInterval(() => {
-        if (this.popup.window.closed) {
+        if (!popupWindow || popupWindow.closed) {
           clearInterval(this.popup.interval);
 
-          this.popup.window = undefined;
+          popupWindow = undefined;
 
           this.$root.$emit('social_shares_close', network, this.url);
           this.$emit('close', network, this.url);
